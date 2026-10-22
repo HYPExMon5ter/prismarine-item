@@ -607,15 +607,15 @@ describe('componentMap getters (1.20.5+)', () => {
 
   describe('enchants', () => {
     it('reads from componentMap when enchantments is present', () => {
-      const enchData = [{ name: 'sharpness', lvl: 5 }]
+      const sharpness = require('prismarine-registry')('1.20.5').enchantmentsByName.sharpness.id
       const item = Item.fromNotch({
         itemId: 830,
         itemCount: 1,
         components: [
-          { type: 'enchantments', data: enchData }
+          { type: 'enchantments', data: { enchantments: [{ id: sharpness, level: 5 }], showTooltip: true } }
         ]
       })
-      expect(item.enchants).toStrictEqual(enchData)
+      expect(item.enchants).toStrictEqual([{ name: 'sharpness', lvl: 5 }])
     })
 
     it('returns empty array when componentMap has no enchantments and no nbt', () => {

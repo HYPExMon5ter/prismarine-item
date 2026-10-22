@@ -96,11 +96,11 @@ the item's custom lore (ie. set in give command)
 
 #### get item.enchants(): { name: string, lvl: number }[]
 
-Returns an array of enchants on the Item with their name and level
+Returns an array of enchants on the Item with their name and level. For an enchanted book these are the enchantments it applies. On 1.20.5+ they are read from the `enchantments` (`stored_enchantments` for books) component.
 
 #### set item.enchants({ name: string, lvl: number }[])
 
-Updates the Item's NBT enchantments based on assigned array
+Updates the Item's enchantments based on assigned array: its NBT before 1.20.5, its `enchantments` (`stored_enchantments` for books) component, which `Item.toNotch` sends, from 1.20.5. An empty array removes them. Unknown enchantment names throw.
 
 #### get item.blocksCanPlaceOn(): [name][]
 #### set item.blocksCanPlaceOn(blockNames: string[])
@@ -113,7 +113,7 @@ In adventure mode, the list of block names (as strings) that this Item can be us
 
 #### item.repairCost
 
-A getter/setter for abstracting the underlying nbt.
+A getter/setter for abstracting the underlying nbt, or the `repair_cost` component (sent by `Item.toNotch`) on 1.20.5+.
 See https://minecraft.gamepedia.com/Anvil_mechanics#Anvil_Uses
 
 #### item.spawnEggMobName

@@ -12,8 +12,26 @@ function chatComponentJson (component) {
   return JSON.stringify(value)
 }
 
+// 1.20.5+ items carry their data as a list of components, which toNotch sends as is; componentMap
+// indexes that list by type. A setter has to change both, or its change never reaches the server.
+function setComponent (item, type, data) {
+  const component = { type, data }
+  const index = item.components.findIndex(entry => entry.type === type)
+  if (index === -1) item.components.push(component)
+  else item.components[index] = component
+  item.componentMap.set(type, component)
+  item.removedComponents = item.removedComponents.filter(entry => entry.type !== type)
+}
+
+function deleteComponent (item, type) {
+  item.components = item.components.filter(entry => entry.type !== type)
+  item.componentMap.delete(type)
+}
+
 function loader (registryOrVersion) {
   const registry = typeof registryOrVersion === 'string' ? require('prismarine-registry')(registryOrVersion) : registryOrVersion
+  // Books keep the enchantments they apply in stored_enchantments, as they kept StoredEnchantments
+  const enchantmentComponent = item => item.name === 'enchanted_book' ? 'stored_enchantments' : 'enchantments'
   class Item {
     constructor (type, count, metadata, nbt, stackId, sentByServer) {
       if (type == null) return
@@ -253,7 +271,7 @@ function loader (registryOrVersion) {
 
     set repairCost (newRepairCost) {
       if (this.componentMap) {
-        this.componentMap.set('repair_cost', { type: 'repair_cost', data: newRepairCost })
+        setComponent(this, 'repair_cost', newRepairCost)
         return
       }
       if (!this?.nbt) this.nbt = nbt.comp({})
@@ -273,8 +291,9 @@ function loader (registryOrVersion) {
       const typeOfEnchantLevelValue = registry.supportFeature('typeOfValueForEnchantLevel')
       const useStoredEnchantments = registry.supportFeature('booksUseStoredEnchantments') && this.name === 'enchanted_book'
 
-      if (this.componentMap?.has('enchantments')) {
-        return this.componentMap.get('enchantments').data
+      if (this.componentMap) {
+        const enchantments = this.componentMap.get(enchantmentComponent(this))?.data?.enchantments ?? []
+        return enchantments.map(({ id, level }) => ({ lvl: level, name: registry.enchantments[id]?.name ?? null }))
       }
 
       if (typeOfEnchantLevelValue === 'short' && enchantNbtKey === 'ench') {
@@ -309,6 +328,24 @@ function loader (registryOrVersion) {
     }
 
     set enchants (normalizedEnchArray) {
+      if (this.componentMap) {
+        const type = enchantmentComponent(this)
+        if (normalizedEnchArray.length === 0) {
+          deleteComponent(this, type)
+          return
+        }
+        const enchantments = normalizedEnchArray.map(({ name, lvl }) => {
+          const enchantment = registry.enchantmentsByName[name]
+          if (!enchantment) throw new Error(`Unknown enchantment ${name}`)
+          return { id: enchantment.id, level: lvl }
+        })
+        // Until 1.21.5 the component also says whether the tooltip lists the enchantments
+        // (showTooltip, showInTooltip for books). Keep it, shown by default; versions
+        // without the flag do not serialize it.
+        const previous = this.componentMap.get(type)?.data
+        setComponent(this, type, { showTooltip: true, showInTooltip: true, ...previous, enchantments })
+        return
+      }
       const enchListName = registry.supportFeature('nbtNameForEnchant')
       const type = registry.supportFeature('typeOfValueForEnchantLevel')
       if (!type) throw new Error("Don't know the serialized type for enchant level")
