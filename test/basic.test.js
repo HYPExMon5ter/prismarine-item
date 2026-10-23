@@ -655,19 +655,25 @@ describe('componentMap setters (1.20.5+)', () => {
   const Item = require('prismarine-item')('1.20.5')
   const registry = require('prismarine-registry')('1.20.5')
 
-  it('customName setter writes to componentMap when it exists', () => {
+  it('customName setter writes the component the server sends', () => {
     const item = new Item(registry.itemsByName.diamond_sword.id, 1)
     item.customName = '{"text":"Cool Sword"}'
-    expect(item.componentMap.get('custom_name')).toStrictEqual({ type: 'custom_name', data: '{"text":"Cool Sword"}' })
-    expect(item.customName).toBe('{"text":"Cool Sword"}')
+    const component = { type: 'custom_name', data: nbt.string('Cool Sword') }
+    expect(item.componentMap.get('custom_name')).toStrictEqual(component)
+    expect(item.components).toStrictEqual([component])
+    expect(item.customName).toBe('"Cool Sword"')
+    item.customName = null
+    expect(item.components).toStrictEqual([])
+    expect(item.customName).toBe(null)
   })
 
-  it('customLore setter writes to componentMap when it exists', () => {
+  it('customLore setter writes the component the server sends', () => {
     const item = new Item(registry.itemsByName.diamond_sword.id, 1)
-    const lore = ['{"text":"Lore line"}']
-    item.customLore = lore
-    expect(item.componentMap.get('lore')).toStrictEqual({ type: 'lore', data: lore })
-    expect(item.customLore).toStrictEqual(lore)
+    item.customLore = ['{"text":"Lore line","italic":false}']
+    const component = { type: 'lore', data: [nbt.comp({ text: nbt.string('Lore line'), italic: nbt.byte(0) })] }
+    expect(item.componentMap.get('lore')).toStrictEqual(component)
+    expect(item.components).toStrictEqual([component])
+    expect(item.customLore).toStrictEqual(['{"text":"Lore line","italic":0}'])
   })
 
   it('repairCost setter writes to componentMap when it exists', () => {

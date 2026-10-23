@@ -19,7 +19,7 @@ function slotCodec (version) {
   }
 }
 
-for (const version of ['1.20.5', '1.21.4', '1.21.5', '1.21.11']) {
+for (const version of ['1.20.5', '1.21.4', '1.21.5', '1.21.11', '26.3']) {
   describe(`component-backed item edits ${version}`, () => {
     const registry = require('prismarine-registry')(version)
     const Item = require('prismarine-item')(registry)
@@ -67,6 +67,37 @@ for (const version of ['1.20.5', '1.21.4', '1.21.5', '1.21.11']) {
       const sword = new Item(registry.itemsByName.diamond_sword.id, 1)
       sword.repairCost = 7
       expect(sent(sword).repairCost).toBe(7)
+    })
+
+    it('sends the custom name', () => {
+      const sword = new Item(registry.itemsByName.diamond_sword.id, 1)
+      sword.customName = '{"text":"Cool Sword"}'
+      expect(sent(sword).customName).toBe('"Cool Sword"')
+      sword.customName = JSON.stringify({ text: 'Gold', color: 'gold', bold: true, extra: ['a', { text: 'b', italic: false }] })
+      expect(JSON.parse(sent(sword).customName)).toStrictEqual({ text: 'Gold', color: 'gold', bold: 1, extra: [{ text: 'a' }, { text: 'b', italic: 0 }] })
+      sword.customName = 'not JSON'
+      expect(sent(sword).customName).toBe('"not JSON"')
+      sword.customName = null
+      expect(sent(sword).customName).toBe(null)
+    })
+
+    it('replaces the custom name of a received item', () => {
+      const sword = new Item(registry.itemsByName.diamond_sword.id, 1)
+      sword.customName = '"Old"'
+      const received = sent(sword)
+      received.customName = '"New"'
+      expect(received.components.filter(c => c.type === 'custom_name')).toHaveLength(1)
+      expect(sent(received).customName).toBe('"New"')
+    })
+
+    it('sends the lore', () => {
+      const sword = new Item(registry.itemsByName.diamond_sword.id, 1)
+      sword.customLore = ['"Line 1"', '{"text":"Line 2","color":"red"}']
+      expect(sent(sword).customLore).toStrictEqual(['"Line 1"', '{"text":"Line 2","color":"red"}'])
+      sword.customLore = []
+      expect(sent(sword).customLore).toStrictEqual([])
+      sword.customLore = null
+      expect(sent(sword).customLore).toBe(null)
     })
 
     it('rejects unknown enchantment names', () => {

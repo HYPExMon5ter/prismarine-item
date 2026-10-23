@@ -86,11 +86,11 @@ A getter/setter for abstracting the underlying nbt
 
 #### item.customName
 
-the item's custom name (ie. anvil name)
+the item's custom name (ie. anvil name): plain text before 1.13, from then on a JSON text component, `null` without one. On 1.20.5+ setting it (a JSON text component, or plain text) writes the `custom_name` component as the server encodes it, so `Item.toNotch` sends it; `null` removes it.
 
 #### item.customLore
 
-the item's custom lore (ie. set in give command)
+the item's custom lore (ie. set in give command). On 1.20.5+ setting it (an array of JSON text components) writes the `lore` component as the server encodes it; `null` removes it.
 
 #### item.enchants
 

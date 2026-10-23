@@ -3,14 +3,39 @@ const nbt = require('prismarine-nbt')
 // 1.20.5 moved the custom name and the lore into data components, which carry a chat component as
 // NBT; the display.Name and display.Lore tags they replaced carried the same component as the JSON
 // string the server wrote. Read the NBT back as that string so customName and customLore have one
-// shape on every version, the one index.d.ts promises. A JS string is already that JSON (the setters
-// store one), but an NBT string tag is the literal text, so it is quoted like any other component:
+// shape on every version, the one index.d.ts promises. A JS string is already that JSON, but an NBT
+// string tag is the literal text, so it is quoted like any other component:
 // nbt.string('{"text":"Hello"}') is the text {"text":"Hello"}, not a component that renders Hello.
 function chatComponentJson (component) {
   if (component == null || typeof component === 'string') return component
   const value = typeof component.type === 'string' && 'value' in component ? nbt.simplify(component) : component
   return JSON.stringify(value)
 }
+
+// The inverse for the setters, which take that JSON string: the NBT the server writes for it. A
+// text without style is a string tag, booleans are bytes, and a list holding both strings and
+// components holds every entry as a component, since an NBT list has a single element type.
+// A string that is not JSON is taken as literal text.
+function chatComponentNbt (json) {
+  let component = json
+  try { component = JSON.parse(json) } catch {}
+  return componentNbt(component)
+}
+
+function componentNbt (value, asCompound = false) {
+  if (typeof value === 'string') return asCompound ? componentNbt({ text: value }, true) : nbt.string(value)
+  if (typeof value === 'boolean') return nbt.byte(value ? 1 : 0)
+  if (typeof value === 'number') return Number.isInteger(value) ? nbt.int(value) : nbt.double(value)
+  if (Array.isArray(value)) {
+    const asCompounds = !value.every(entry => typeof entry === 'string')
+    const entries = value.map(entry => componentNbt(entry, asCompounds))
+    return nbt.list(entries.length ? { type: entries[0].type, value: entries.map(entry => entry.value) } : undefined)
+  }
+  if (!asCompound && isPlainText(value)) return nbt.string(value.text)
+  return nbt.comp(Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, componentNbt(entry)])))
+}
+
+const isPlainText = value => typeof value === 'object' && Object.keys(value).length === 1 && typeof value.text === 'string'
 
 // 1.20.5+ items carry their data as a list of components, which toNotch sends as is; componentMap
 // indexes that list by type. A setter has to change both, or its change never reaches the server.
@@ -231,7 +256,8 @@ function loader (registryOrVersion) {
 
     set customName (newName) {
       if (this.componentMap) {
-        this.componentMap.set('custom_name', { type: 'custom_name', data: newName })
+        if (newName == null) deleteComponent(this, 'custom_name')
+        else setComponent(this, 'custom_name', chatComponentNbt(newName))
         return
       }
       if (!this.nbt) this.nbt = nbt.comp({})
@@ -250,7 +276,8 @@ function loader (registryOrVersion) {
 
     set customLore (newLore) {
       if (this.componentMap) {
-        this.componentMap.set('lore', { type: 'lore', data: newLore })
+        if (newLore == null) deleteComponent(this, 'lore')
+        else setComponent(this, 'lore', [newLore].flat().map(chatComponentNbt))
         return
       }
       if (!this.nbt) this.nbt = nbt.comp({})
