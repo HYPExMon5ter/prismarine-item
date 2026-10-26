@@ -17,7 +17,7 @@
   "devDependencies": {
     "@types/node": "^25.4.0",
     "expect": "^29.1.2",
-    "minecraft-data": "https://github.com/HYPExMon5ter/node-minecraft-data/releases/download/java-26.3-data-10/minecraft-data-3.117.0.tgz",
+    "minecraft-data": "https://github.com/HYPExMon5ter/node-minecraft-data/releases/download/java-26.3-data-11/minecraft-data-3.117.0.tgz",
     "mocha": "^11.0.1",
     "prismarine-item": "file:.",
     "protodef": "^1.19.0",
